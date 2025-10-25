@@ -70,10 +70,20 @@ def cleanup_gpio():
 
 
 def main():
+    reset_pen()
+
+    input("Shake the Etch-a-Sketch to clear it, then press enter to continue: ")
+    spin_motor(2 * STEPS_PER_TURN, x_dir=Direction.POSITIVE, y_dir=Direction.POSITIVE)
+
     spin_motor(STEPS_PER_TURN, x_dir=Direction.POSITIVE, y_dir=Direction.NEGATIVE)
     spin_motor(STEPS_PER_TURN, x_dir=Direction.POSITIVE, y_dir=Direction.POSITIVE)
     spin_motor(STEPS_PER_TURN, x_dir=Direction.NEGATIVE, y_dir=Direction.POSITIVE)
     spin_motor(STEPS_PER_TURN, x_dir=Direction.NEGATIVE, y_dir=Direction.NEGATIVE)
+
+
+# Move the pen to the top left
+def reset_pen():
+    spin_motor(5 * STEPS_PER_TURN, x_dir=Direction.NEGATIVE, y_dir=Direction.NEGATIVE)
 
 
 def spin_motor(step_count: int, x_dir: Direction, y_dir: Direction):
