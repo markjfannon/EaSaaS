@@ -2,6 +2,9 @@ import RPi.GPIO as GPIO
 import time
 from enum import Enum
 
+# 21 mm horizontally
+# 19 mm vertically
+
 SCREEN_HEIGHT_MM = 133
 SCREEN_WIDTH_MM = 185
 
@@ -18,21 +21,11 @@ y_in4 = 13
 x_motor_pins = [x_in1, x_in2, x_in3, x_in4]
 y_motor_pins = [y_in1, y_in2, y_in3, y_in4]
 
-motor_step_counter = 0
+STEP_SLEEP_SECS = 0.002  # careful lowering this, at some point you run into the mechanical limitation of how quick your motor can move
+STEPS_PER_TURN = 4096  # 5.625*(1/64) per step, 4096 steps is 360°
 
-
-# 21 mm horizontally
-# 19 mm vertically
-
-# careful lowering this, at some point you run into the mechanical limitation of how quick your motor can move
-step_sleep = 0.001
-
-step_count = 4096  # 5.625*(1/64) per step, 4096 steps is 360°
-
-direction = False  # True for clockwise, False for counter-clockwise
-
-# defining stepper motor sequence (found in documentation http://www.4tronix.co.uk/arduino/Stepper-Motors.php)
-step_sequence = [
+# stepper motor sequence (found in documentation http://www.4tronix.co.uk/arduino/Stepper-Motors.php)
+STEP_SEQUENCE = [
     [1, 0, 0, 1],
     [1, 0, 0, 0],
     [1, 1, 0, 0],
@@ -43,6 +36,9 @@ step_sequence = [
     [0, 0, 0, 1],
 ]
 
+x_motor_sequence_index = 0
+y_motor_sequence_index = 0
+
 
 class Direction(Enum):
     POSITIVE = 1
@@ -50,8 +46,8 @@ class Direction(Enum):
     NEGATIVE = -1
 
 
-def setup():
-    # setting up
+def setup_gpio():
+    # set up pins
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(x_in1, GPIO.OUT)
     GPIO.setup(x_in2, GPIO.OUT)
@@ -63,7 +59,7 @@ def setup():
     GPIO.setup(y_in3, GPIO.OUT)
     GPIO.setup(y_in4, GPIO.OUT)
 
-    # initializing
+    # initialize to low
     GPIO.output(x_in1, GPIO.LOW)
     GPIO.output(x_in2, GPIO.LOW)
     GPIO.output(x_in3, GPIO.LOW)
@@ -75,7 +71,7 @@ def setup():
     GPIO.output(y_in4, GPIO.LOW)
 
 
-def cleanup():
+def cleanup_gpio():
     GPIO.output(x_in1, GPIO.LOW)
     GPIO.output(x_in2, GPIO.LOW)
     GPIO.output(x_in3, GPIO.LOW)
@@ -90,42 +86,42 @@ def cleanup():
 
 
 def main():
-    spin_motor(step_count, x_dir=Direction.NEGATIVE, y_dir=Direction.ZERO)
-    # spin_motor(step_count, x_dir=Direction.ZERO, y_dir=Direction.POSITIVE)
+    spin_motor(STEPS_PER_TURN, x_dir=Direction.ZERO, y_dir=Direction.POSITIVE)
 
 
 def spin_motor(step_count: int, x_dir: Direction, y_dir: Direction):
-    global motor_step_counter
+    global x_motor_sequence_index, y_motor_sequence_index
 
-    if x_dir != Direction.ZERO:
-        direction = x_dir
-        motor_pins = x_motor_pins
-    elif y_dir != Direction.ZERO:
-        direction = y_dir
-        motor_pins = y_motor_pins
+    for _ in range(step_count):
+        for pin in range(0, 4):
+            GPIO.output(x_motor_pins[pin], STEP_SEQUENCE[x_motor_sequence_index][pin])
+            GPIO.output(y_motor_pins[pin], STEP_SEQUENCE[y_motor_sequence_index][pin])
 
-    i = 0
-    for i in range(step_count):
-        for pin in range(0, len(motor_pins)):
-            # assert motor_step_counter >= 0 and motor_step_counter < 8
-            GPIO.output(motor_pins[pin], step_sequence[motor_step_counter][pin])
-        match direction:
+        match x_dir:
             case Direction.NEGATIVE:
-                motor_step_counter = (motor_step_counter - 1) % 8
+                x_motor_sequence_index = (x_motor_sequence_index - 1) % 8
             case Direction.POSITIVE:
-                motor_step_counter = (motor_step_counter + 1) % 8
+                x_motor_sequence_index = (x_motor_sequence_index + 1) % 8
             case Direction.ZERO:
                 pass
 
-        time.sleep(step_sleep)
+        match y_dir:
+            case Direction.NEGATIVE:
+                y_motor_sequence_index = (y_motor_sequence_index - 1) % 8
+            case Direction.POSITIVE:
+                y_motor_sequence_index = (y_motor_sequence_index + 1) % 8
+            case Direction.ZERO:
+                pass
+
+        time.sleep(STEP_SLEEP_SECS)
 
 
 if __name__ == "__main__":
     try:
-        setup()
+        setup_gpio()
         main()
     except KeyboardInterrupt:
         pass
     finally:
-        cleanup()
+        cleanup_gpio()
         exit(0)
