@@ -1,5 +1,8 @@
 import RPi.GPIO as GPIO
 import time
+import json
+
+from sys import argv
 from enum import Enum
 
 # 21 mm horizontally
@@ -41,6 +44,17 @@ current_x_dir = Direction.ZERO
 current_y_dir = Direction.ZERO
 
 
+def load_file(filename: str) -> list[str]:
+    with open(filename, 'r') as file:
+        return file.readlines()
+
+def draw_from_file(file: list[str]):
+    for line in file:
+        inst = json.loads(line)
+
+        spin_motor(inst["steps"], Direction(inst["x_dir"]), Direction(inst["y_dir"]))
+
+
 def setup_gpio():
     # set up pins
     GPIO.setmode(GPIO.BCM)
@@ -70,16 +84,18 @@ def cleanup_gpio():
 
 
 def main():
+
+    if len(argv) != 2:
+        print("Nuh uh! Supply a single argument please")
+        return
+    
+    lines = load_file(argv[1])
+
     reset_pen()
 
     input("Shake the Etch-a-Sketch to clear it, then press enter to continue: ")
-    spin_motor(2 * STEPS_PER_TURN, x_dir=Direction.POSITIVE, y_dir=Direction.POSITIVE)
 
-    spin_motor(STEPS_PER_TURN, x_dir=Direction.POSITIVE, y_dir=Direction.NEGATIVE)
-    spin_motor(STEPS_PER_TURN, x_dir=Direction.POSITIVE, y_dir=Direction.POSITIVE)
-    spin_motor(STEPS_PER_TURN, x_dir=Direction.NEGATIVE, y_dir=Direction.POSITIVE)
-    spin_motor(STEPS_PER_TURN, x_dir=Direction.NEGATIVE, y_dir=Direction.NEGATIVE)
-
+    draw_from_file(lines)
 
 # Move the pen to the top left
 def reset_pen():
