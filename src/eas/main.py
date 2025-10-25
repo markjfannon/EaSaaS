@@ -65,7 +65,10 @@ def cleanup_gpio():
 
 
 def main():
-    spin_motor(STEPS_PER_TURN, x_dir=Direction.POSITIVE, y_dir=Direction.POSITIVE)
+    spin_motor(STEPS_PER_TURN, x_dir=Direction.POSITIVE, y_dir=Direction.ZERO)
+    spin_motor(STEPS_PER_TURN, x_dir=Direction.ZERO, y_dir=Direction.POSITIVE)
+    spin_motor(STEPS_PER_TURN, x_dir=Direction.NEGATIVE, y_dir=Direction.ZERO)
+    spin_motor(STEPS_PER_TURN, x_dir=Direction.ZERO, y_dir=Direction.NEGATIVE)
 
 
 def spin_motor(step_count: int, x_dir: Direction, y_dir: Direction):
@@ -86,9 +89,9 @@ def spin_motor(step_count: int, x_dir: Direction, y_dir: Direction):
 
         match x_dir:
             case Direction.NEGATIVE:
-                x_motor_sequence_index = (x_motor_sequence_index - 1) % 8
-            case Direction.POSITIVE:
                 x_motor_sequence_index = (x_motor_sequence_index + 1) % 8
+            case Direction.POSITIVE:
+                x_motor_sequence_index = (x_motor_sequence_index - 1) % 8
             case Direction.ZERO:
                 pass
 
