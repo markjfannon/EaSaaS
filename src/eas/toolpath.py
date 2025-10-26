@@ -16,13 +16,19 @@ def generate_toolpath(img: np.ndarray) -> list[Command]:
     print(white_pixel_count)
     #exit()
     while white_pixel_count > 0:
+        prev_point = current_point
         point, img = find_next_point(img, white_pixel_count, current_point)
+
+        next_point_commands, img = gen_path_to_next_point(prev_point, point, img)
+        print(next_point_commands)
+        commands = commands + next_point_commands
         white_pixel_count -= 1
 
         adjacent, direction = cross_x_search(point, img)
         print(direction)
         if adjacent:
             command, current_point, img = gen_line_command(direction, point, img)
+
             print(repr(command))
             commands.append(command)
             white_pixel_count -= command.steps
@@ -31,6 +37,28 @@ def generate_toolpath(img: np.ndarray) -> list[Command]:
 
     return(commands)
 
+
+def gen_path_to_next_point(current_point: tuple[int,int], next_point: tuple[int,int], img: np.ndarray) -> tuple[list[Command], np.ndarray]:
+    # TODO add setting vals to 1
+    y_command_steps = next_point[0] - current_point[0]
+    y_direction = (1, 0)
+    if y_command_steps < 0:
+        y_command_steps *= -1
+        y_direction = (-1, 0)
+    
+
+    x_command_steps = next_point[1] - current_point[1]
+    x_direction = (0, 1)
+    if x_command_steps < 0:
+        x_command_steps *= -1
+        x_direction = (0, -1)
+
+    x_command_steps = next_point[1] - current_point[1]
+    
+    x_command = Command(x_direction[1], x_direction[0], x_command_steps)
+    y_command = Command(y_direction[1], y_direction[0], y_command_steps)
+
+    return [x_command, y_command], img
 
 def add_border(img: np.ndarray) -> np.ndarray:
     height, width = img.shape 
