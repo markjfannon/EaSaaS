@@ -16,6 +16,7 @@ def canny(img_path: str) -> np.ndarray:
     img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
     assert img is not None, "file could not be read, check with os.path.exists()"
     img = resize_img(img)
+    img = cv.GaussianBlur(img, (15, 15), 0)  
     edges = cv.Canny(img,100,200)
 
     return edges
