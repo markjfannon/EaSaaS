@@ -27,13 +27,15 @@ def generate_toolpath(img: np.ndarray) -> list[Command]:
         white_pixel_count -= 1
 
         adjacent, direction = cross_x_search(point, img)
-        print(direction)
-        if adjacent:
+        while adjacent:
+            print(direction)
             command, current_point, img = gen_line_command(direction, point, img)
 
             print(repr(command))
             commands.append(command)
             white_pixel_count -= command.steps
+
+            adjacent, direction = cross_x_search(point, img)
 
     return commands
 
@@ -61,13 +63,18 @@ def gen_path_to_next_point(
     if x_command_steps > 0:
         commands.append(x_command)
         for x_offset in range(x_command_steps):
-            img[current_point[0], current_point[1] + x_offset] = 1
+            print(current_point[1] + x_offset)
+            new_x = current_point[1] + x_offset
+            if new_x < img.shape[1]:
+                img[current_point[0], new_x] = 1
         
             
     if y_command_steps > 0:
         commands.append(y_command)
         for y_offset in range(y_command_steps):
-            img[current_point[0], current_point[1] + y_offset] = 1
+            new_y = current_point[0] + y_offset
+            if new_y < img.shape[0]:
+             img[new_y, current_point[1]] = 1
     return commands, img
 
 
