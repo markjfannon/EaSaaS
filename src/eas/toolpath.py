@@ -95,21 +95,21 @@ def gen_path_to_next_point(
         dir_x = 1
     elif dx < 0:
         dir_x = -1
-    
+
     direction = (dir_y, dir_x)
 
-
     min_dy_dx = min(abs(dy), abs(dx))
-    # next create command to get as close as we can 
+    # next create command to get as close as we can
     command_diag = Command(direction[1], direction[0], min_dy_dx)
 
     commands.append(command_diag)
-    
-    current_point = (current_point[0] + (direction[0]*min_dy_dx), current_point[1] + (direction[1]*min_dy_dx))
+
+    current_point = (
+        current_point[0] + (direction[0] * min_dy_dx),
+        current_point[1] + (direction[1] * min_dy_dx),
+    )
 
     print(f"{current_point}, {next_point}")
-        
-
 
     # finally have an adjustment command to do the last bit
 
@@ -225,7 +225,7 @@ def find_next_point(
 if __name__ == "__main__":
     import image
 
-    coms = generate_toolpath(image.canny("images/cat.jpg"))
+    coms = generate_toolpath(image.canny("images/cat_lines.jpg"))
     with open("cat.jsonl", "w") as file:
         file.write('{"steps": 8192, "x_dir": 1, "y_dir": 1}\n')
 

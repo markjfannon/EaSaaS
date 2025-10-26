@@ -37,6 +37,8 @@ def main():
 
 def setup_turtle():
     t.screen.title("Etch-a-Sketch Simulator")
+    t.screen.tracer(8)
+    t.hideturtle()
     t.penup()
     set_position(0, 0)
     t.pendown()
