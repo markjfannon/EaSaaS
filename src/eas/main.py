@@ -4,6 +4,7 @@ import json
 
 from sys import argv
 from enum import Enum
+from command import Command
 
 # 21 mm horizontally
 # 19 mm vertically
@@ -44,15 +45,23 @@ current_x_dir = Direction.ZERO
 current_y_dir = Direction.ZERO
 
 
-def load_file(filename: str) -> list[str]:
-    with open(filename, 'r') as file:
-        return file.readlines()
+def load_file(filename: str) -> list[Command]:
+    commands = []
+    with open(filename, "r") as file:
+        lines = file.readlines()
+        for line in lines:
+            inst = json.loads(line)
+            commands.append(
+                Command(x=inst["x_dir"], y=inst["y_dir"], steps=inst["steps"])
+            )
 
-def draw_from_file(file: list[str]):
-    for line in file:
-        inst = json.loads(line)
+    return commands
 
-        spin_motor(inst["steps"], Direction(inst["x_dir"]), Direction(inst["y_dir"]))
+
+def draw_from_file(commands: list[Command]):
+    for command in commands:
+        print(repr(command))
+        spin_motor(command.steps, Direction(command.x), Direction(command.y))
 
 
 def setup_gpio():
@@ -84,18 +93,20 @@ def cleanup_gpio():
 
 
 def main():
-
     if len(argv) != 2:
         print("Nuh uh! Supply a single argument please")
         return
-    
-    lines = load_file(argv[1])
 
+    commands = load_file(argv[1])
+
+    print("Moving pen to top left...")
     reset_pen()
 
     input("Shake the Etch-a-Sketch to clear it, then press enter to continue: ")
+    print(f"Drawing {argv[1]}...")
 
-    draw_from_file(lines)
+    draw_from_file(commands)
+
 
 # Move the pen to the top left
 def reset_pen():
@@ -109,10 +120,18 @@ def spin_motor(step_count: int, x_dir: Direction, y_dir: Direction):
     x_fuel = step_count
     y_fuel = step_count
 
-    if current_x_dir != Direction.ZERO and current_x_dir != x_dir:
+    if (
+        current_x_dir != Direction.ZERO
+        and x_dir != Direction.ZERO
+        and current_x_dir != x_dir
+    ):
         x_fuel += BACKLASH_COMPENSATION_STEPS
 
-    if current_y_dir != Direction.ZERO and current_y_dir != y_dir:
+    if (
+        current_y_dir != Direction.ZERO
+        and y_dir != Direction.ZERO
+        and current_y_dir != y_dir
+    ):
         y_fuel += BACKLASH_COMPENSATION_STEPS
 
     if x_dir != Direction.ZERO:
@@ -121,33 +140,35 @@ def spin_motor(step_count: int, x_dir: Direction, y_dir: Direction):
         current_y_dir = y_dir
 
     while x_fuel > 0 or y_fuel > 0:
-        if x_dir != Direction.ZERO and x_fuel >= y_fuel:
+        if x_fuel >= y_fuel:
             x_fuel -= 1
 
-            for pin in range(0, 4):
-                GPIO.output(
-                    X_MOTOR_PINS[pin], STEP_SEQUENCE[x_motor_sequence_index][pin]
-                )
+            if x_dir != Direction.ZERO:
+                for pin in range(0, 4):
+                    GPIO.output(
+                        X_MOTOR_PINS[pin], STEP_SEQUENCE[x_motor_sequence_index][pin]
+                    )
 
-            match x_dir:
-                case Direction.NEGATIVE:
-                    x_motor_sequence_index = (x_motor_sequence_index + 1) % 8
-                case Direction.POSITIVE:
-                    x_motor_sequence_index = (x_motor_sequence_index - 1) % 8
+                match x_dir:
+                    case Direction.NEGATIVE:
+                        x_motor_sequence_index = (x_motor_sequence_index + 1) % 8
+                    case Direction.POSITIVE:
+                        x_motor_sequence_index = (x_motor_sequence_index - 1) % 8
 
-        if y_dir != Direction.ZERO and y_fuel >= x_fuel:
+        if y_fuel >= x_fuel:
             y_fuel -= 1
 
-            for pin in range(0, 4):
-                GPIO.output(
-                    Y_MOTOR_PINS[pin], STEP_SEQUENCE[y_motor_sequence_index][pin]
-                )
+            if y_dir != Direction.ZERO:
+                for pin in range(0, 4):
+                    GPIO.output(
+                        Y_MOTOR_PINS[pin], STEP_SEQUENCE[y_motor_sequence_index][pin]
+                    )
 
-            match y_dir:
-                case Direction.NEGATIVE:
-                    y_motor_sequence_index = (y_motor_sequence_index - 1) % 8
-                case Direction.POSITIVE:
-                    y_motor_sequence_index = (y_motor_sequence_index + 1) % 8
+                match y_dir:
+                    case Direction.NEGATIVE:
+                        y_motor_sequence_index = (y_motor_sequence_index - 1) % 8
+                    case Direction.POSITIVE:
+                        y_motor_sequence_index = (y_motor_sequence_index + 1) % 8
 
         time.sleep(STEP_SLEEP_SECS)
 
