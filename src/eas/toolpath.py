@@ -40,6 +40,7 @@ def generate_toolpath(img: np.ndarray) -> list[Command]:
 
 def gen_path_to_next_point(current_point: tuple[int,int], next_point: tuple[int,int], img: np.ndarray) -> tuple[list[Command], np.ndarray]:
     # TODO add setting vals to 1
+    commands = []
     y_command_steps = next_point[0] - current_point[0]
     y_direction = (1, 0)
     if y_command_steps < 0:
@@ -56,7 +57,11 @@ def gen_path_to_next_point(current_point: tuple[int,int], next_point: tuple[int,
     x_command = Command(x_direction[1], x_direction[0], x_command_steps)
     y_command = Command(y_direction[1], y_direction[0], y_command_steps)
 
-    return [x_command, y_command], img
+    if x_command_steps >0:
+        commands.append(x_command)
+    if y_command_steps > 0:
+        commands.append(y_command)
+    return commands, img
 
 def add_border(img: np.ndarray) -> np.ndarray:
     height, width = img.shape 
