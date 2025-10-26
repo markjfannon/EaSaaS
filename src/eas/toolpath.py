@@ -45,6 +45,8 @@ def gen_path_to_next_point(
 ) -> tuple[list[Command], np.ndarray]:
     # TODO add setting vals to 1
     commands = []
+
+    """
     y_command_steps = next_point[0] - current_point[0]
     y_direction = (1, 0)
     if y_command_steps < 0:
@@ -62,19 +64,75 @@ def gen_path_to_next_point(
 
     if x_command_steps > 0:
         commands.append(x_command)
-        for x_offset in range(x_command_steps):
-            print(current_point[1] + x_offset)
-            new_x = current_point[1] + x_offset
-            if new_x < img.shape[1]:
-                img[current_point[0], new_x] = 1
+        #for x_offset in range(x_command_steps):
+            #print(current_point[1] + x_offset)
+            #new_x = current_point[1] + x_offset
+            #if new_x < img.shape[1]:
+            #    img[current_point[0], new_x] = 1
         
             
     if y_command_steps > 0:
         commands.append(y_command)
-        for y_offset in range(y_command_steps):
-            new_y = current_point[0] + y_offset
-            if new_y < img.shape[0]:
-             img[new_y, current_point[1]] = 1
+        #for y_offset in range(y_command_steps):
+        #    new_y = current_point[0] + y_offset
+        #    if new_y < img.shape[0]:
+        #     img[new_y, current_point[1]] = 1
+
+    """
+
+    # first calculate direction
+    dy = next_point[0] - current_point[0]
+    dx = next_point[1] - current_point[1]
+
+    dir_x = 0
+    dir_y = 0
+    if dy > 0:
+        dir_y = 1
+    elif dy < 0:
+        dir_y = -1
+
+    if dx > 0:
+        dir_x = 1
+    elif dx < 0:
+        dir_x = -1
+    
+    direction = (dir_y, dir_x)
+
+
+    min_dy_dx = min(abs(dy), abs(dx))
+    # next create command to get as close as we can 
+    command_diag = Command(direction[1], direction[0], min_dy_dx)
+
+    commands.append(command_diag)
+    
+    current_point = (current_point[0] + (direction[0]*min_dy_dx), current_point[1] + (direction[1]*min_dy_dx))
+
+    print(f"{current_point}, {next_point}")
+        
+
+
+    # finally have an adjustment command to do the last bit
+
+    # first calculate direction
+    dy = next_point[0] - current_point[0]
+    dx = next_point[1] - current_point[1]
+
+    dir_x = 0
+    dir_y = 0
+    if dy > 0:
+        dir_y = 1
+    elif dy < 0:
+        dir_y = -1
+
+    if dx > 0:
+        dir_x = 1
+    elif dx < 0:
+        dir_x = -1
+
+    steps = max(abs(dy), abs(dx))
+
+    commands.append(Command(dir_x, dir_y, steps))
+
     return commands, img
 
 
@@ -180,3 +238,4 @@ if __name__ == "__main__":
             }
             file.write(f"{json.dumps(inst)}\n")
             print(f"x: {com.x}, y: {com.y}, steps: {com.steps}")
+        print(f"Length: {len(coms)}")
