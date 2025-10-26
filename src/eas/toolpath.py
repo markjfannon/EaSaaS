@@ -60,8 +60,14 @@ def gen_path_to_next_point(
 
     if x_command_steps > 0:
         commands.append(x_command)
+        for x_offset in range(x_command_steps):
+            img[current_point[0], current_point[1] + x_offset] = 1
+        
+            
     if y_command_steps > 0:
         commands.append(y_command)
+        for y_offset in range(y_command_steps):
+            img[current_point[0], current_point[1] + y_offset] = 1
     return commands, img
 
 
