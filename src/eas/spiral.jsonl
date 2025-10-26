@@ -1,6 +1,6 @@
 {"steps": 10240, "x_dir": 1, "y_dir": 1}
-{"steps": 9600, "x_dir": 1, "y_dir": 0}
-{"steps": 9600, "x_dir": 0, "y_dir": 1}
+{"steps": 4800, "x_dir": 1, "y_dir": 0}
+{"steps": 4800, "x_dir": 0, "y_dir": 1}
 {"steps": 6400, "x_dir": -1, "y_dir": 0}
 {"steps": 6400, "x_dir": 0, "y_dir": -1}
 {"steps": 6400, "x_dir": 1, "y_dir": 0}
