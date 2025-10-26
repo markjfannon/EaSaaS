@@ -43,17 +43,15 @@ def gen_path_to_next_point(current_point: tuple[int,int], next_point: tuple[int,
     y_command_steps = next_point[0] - current_point[0]
     y_direction = (1, 0)
     if y_command_steps < 0:
-        y_command_steps *= -1
+        y_command_steps = abs(y_command_steps)
         y_direction = (-1, 0)
     
 
     x_command_steps = next_point[1] - current_point[1]
     x_direction = (0, 1)
     if x_command_steps < 0:
-        x_command_steps *= -1
+        x_command_steps = abs(x_command_steps)
         x_direction = (0, -1)
-
-    x_command_steps = next_point[1] - current_point[1]
     
     x_command = Command(x_direction[1], x_direction[0], x_command_steps)
     y_command = Command(y_direction[1], y_direction[0], y_command_steps)
@@ -105,7 +103,7 @@ def gen_line_command(direction: tuple[int,int], point: tuple[int,int], img: np.n
         img[next_point] = 1
         prev_point = next_point
         next_point = (next_point[0] + direction[0], next_point[1] + direction[1])
-    
+
     return Command(x=direction[1], y=direction[0], steps=step_count), prev_point, img
     
 
