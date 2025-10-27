@@ -5,11 +5,7 @@ from command import Command
 
 
 def generate_toolpath(img: np.ndarray) -> list[Command]:
-    # img_int = img.astype(np.uint8)
-    # img = img_int
     img = add_border(img)
-    # white_pixel_count = np.sum(img_int == 1)
-    # print(white_pixel_count)
     print(img)
     commands = []
 
@@ -22,20 +18,18 @@ def generate_toolpath(img: np.ndarray) -> list[Command]:
         point, img = find_next_point(img, white_pixel_count, current_point)
 
         next_point_commands, img = gen_path_to_next_point(prev_point, point, img)
-        print(next_point_commands)
         commands = commands + next_point_commands
         white_pixel_count -= 1
 
-        adjacent, direction = cross_x_search(point, img)
+        current_point = point 
+        adjacent, direction = cross_x_search(current_point, img) 
         while adjacent:
-            print(direction)
-            command, current_point, img = gen_line_command(direction, point, img)
+            command, current_point, img = gen_line_command(direction, current_point, img)
 
-            print(repr(command))
             commands.append(command)
             white_pixel_count -= command.steps
 
-            adjacent, direction = cross_x_search(point, img)
+            adjacent, direction = cross_x_search(current_point, img)
 
     return commands
 
