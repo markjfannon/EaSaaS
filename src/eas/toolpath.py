@@ -6,12 +6,9 @@ from constants import DIRECTIONS
 
 
 def generate_toolpath(img: np.ndarray) -> list[Command]:
-    # img = add_border(img)
-    print(img)
     commands = []
 
     current_point = (0, 0)
-    # exit()
     while np.any(img == 255):
         prev_point = current_point
         point, img = find_next_point(img, current_point)
@@ -46,7 +43,6 @@ def gen_path_to_next_point(
     height, width = img.shape
 
     # follow existing path
-
     queue = deque([current_point])
     visited_bfs: set[tuple[int, int]] = {current_point}
     parent_map: dict[tuple[int, int], tuple[int, int]] = {current_point: None}
@@ -211,41 +207,35 @@ def find_next_point(
     img: np.ndarray, origin: tuple[int, int] = (0, 0)
 ) -> tuple[tuple[int, int], np.ndarray]:
     height, width = img.shape
-    # print(img.shape)
+    y, x = origin
+    max_radius = max(height, width)
 
-    x, y = origin
-    dx, dy = 1, 0
-    steps_to_take = 1
-    steps_taken = 0
-    turns = 0
+    # radius 0
+    if 0 <= y < height and 0 <= x < width and img[y, x] == 255:
+        return (y, x), img
 
-    WHITE = 255
-    FOUND = 1
+    # Search in expanding spiral
+    for radius in range(1, max_radius):
+        min_y = max(0, y - radius)
+        max_y = min(height, y + radius + 1)
+        min_x = max(0, x - radius)
+        max_x = min(width, x + radius + 1)
 
-    while np.any(img == 255) > 0 or x > 5 * max(width, height):
-        # print(total_white)
-        # print(img[y,x])
+        # Check perimeter of the search box
+        for j in range(min_x, max_x):
+            if img[min_y, j] == 255:
+                return (min_y, j), img
+            if img[max_y - 1, j] == 255:
+                return (max_y - 1, j), img
 
-        if x >= 0 and x < width and y >= 0 and y < height and img[y, x] >= WHITE:
-            img[y, x] = FOUND
-            print(f"found white at ({x}, {y})")
-            return (y, x), img
+        # (Start from min_y + 1 to avoid re-checking corners)
+        for i in range(min_y + 1, max_y - 1):
+            if img[i, min_x] == 255:
+                return (i, min_x), img
+            if img[i, max_x - 1] == 255:
+                return (i, max_x - 1), img
 
-        x += dx
-        y += dy
-        steps_taken += 1
-
-        if steps_taken == steps_to_take:
-            steps_taken = 0
-
-            dx, dy = -dy, dx
-
-            turns += 1
-
-            if turns % 2 == 0:
-                steps_to_take += 1
-
-    raise ValueError
+    return None, img
 
 
 if __name__ == "__main__":
