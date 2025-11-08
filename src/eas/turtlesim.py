@@ -1,10 +1,10 @@
-from turtle import Turtle
+import turtle
 from constants import SCREEN_HEIGHT_MM, SCREEN_WIDTH_MM
 from command import Command
 import json
 from sys import argv
 
-t = Turtle()
+t = turtle.Turtle()
 
 STEPS_PER_MM = 50
 
@@ -37,6 +37,7 @@ def main():
 
 def setup_turtle():
     t.screen.title("Etch-a-Sketch Simulator")
+    turtle.tracer(0)
     t.hideturtle()
     t.penup()
     set_position(0, 0)
@@ -56,6 +57,7 @@ def draw_commands(commands: list[Command]):
         current_x += (command.steps / STEPS_PER_MM) * command.x
         current_y += (command.steps / STEPS_PER_MM) * command.y
         set_position(current_x, current_y)
+    turtle.update()
 
 
 # Remaps coords to have 0,0 in the top left

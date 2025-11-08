@@ -1,33 +1,32 @@
 import json
 import numpy as np
-import cv2 as cv
+from collections import deque
 from command import Command
+from constants import DIRECTIONS
 
 
 def generate_toolpath(img: np.ndarray) -> list[Command]:
-    img = add_border(img)
+    # img = add_border(img)
     print(img)
     commands = []
 
     current_point = (0, 0)
-    white_pixel_count = np.sum(img == 255)
-    print(white_pixel_count)
     # exit()
-    while white_pixel_count > 0:
+    while np.any(img == 255):
         prev_point = current_point
-        point, img = find_next_point(img, white_pixel_count, current_point)
+        point, img = find_next_point(img, current_point)
 
         next_point_commands, img = gen_path_to_next_point(prev_point, point, img)
         commands = commands + next_point_commands
-        white_pixel_count -= 1
 
-        current_point = point 
-        adjacent, direction = cross_x_search(current_point, img) 
+        current_point = point
+        adjacent, direction = cross_x_search(current_point, img)
         while adjacent:
-            command, current_point, img = gen_line_command(direction, current_point, img)
+            command, current_point, img = gen_line_command(
+                direction, current_point, img
+            )
 
             commands.append(command)
-            white_pixel_count -= command.steps
 
             adjacent, direction = cross_x_search(current_point, img)
 
@@ -37,95 +36,128 @@ def generate_toolpath(img: np.ndarray) -> list[Command]:
 def gen_path_to_next_point(
     current_point: tuple[int, int], next_point: tuple[int, int], img: np.ndarray
 ) -> tuple[list[Command], np.ndarray]:
-    # TODO add setting vals to 1
+    """
+    Moves from current_point to next_point in two phases:
+    1. Follows existing drawn pixels (value 1) to get as close as possible.
+    2. Draws a new line (diagonal + straight) to reach the target,
+       marking traversed pixels as 1.
+    """
     commands = []
+    height, width = img.shape
 
-    """
-    y_command_steps = next_point[0] - current_point[0]
-    y_direction = (1, 0)
-    if y_command_steps < 0:
-        y_command_steps = abs(y_command_steps)
-        y_direction = (-1, 0)
+    # follow existing path
 
-    x_command_steps = next_point[1] - current_point[1]
-    x_direction = (0, 1)
-    if x_command_steps < 0:
-        x_command_steps = abs(x_command_steps)
-        x_direction = (0, -1)
+    queue = deque([current_point])
+    visited_bfs: set[tuple[int, int]] = {current_point}
+    parent_map: dict[tuple[int, int], tuple[int, int]] = {current_point: None}
 
-    x_command = Command(x_direction[1], x_direction[0], x_command_steps)
-    y_command = Command(y_direction[1], y_direction[0], y_command_steps)
+    closest_pos_on_path = current_point
+    min_dist_sq = (next_point[0] - current_point[0]) ** 2 + (
+        next_point[1] - current_point[1]
+    ) ** 2
 
-    if x_command_steps > 0:
-        commands.append(x_command)
-        #for x_offset in range(x_command_steps):
-            #print(current_point[1] + x_offset)
-            #new_x = current_point[1] + x_offset
-            #if new_x < img.shape[1]:
-            #    img[current_point[0], new_x] = 1
-        
-            
-    if y_command_steps > 0:
-        commands.append(y_command)
-        #for y_offset in range(y_command_steps):
-        #    new_y = current_point[0] + y_offset
-        #    if new_y < img.shape[0]:
-        #     img[new_y, current_point[1]] = 1
+    while queue:
+        y, x = queue.popleft()
 
-    """
+        # Check if this point is closer to the target
+        dist_sq = (next_point[0] - y) ** 2 + (next_point[1] - x) ** 2
+        if dist_sq < min_dist_sq:
+            min_dist_sq = dist_sq
+            closest_pos_on_path = (y, x)
 
-    # first calculate direction
+        # Explore neighbors
+        for dy, dx in DIRECTIONS:
+            ny, nx = y + dy, x + dx
+            neighbor = (ny, nx)
+
+            # Check if we've seen it in this BFS, and if it's a '1' pixel
+            if (
+                0 <= ny < height
+                and 0 <= nx < width
+                and neighbor not in visited_bfs
+                and img[ny, nx] == 1
+            ):  # Only follow existing path
+                visited_bfs.add(neighbor)
+                parent_map[neighbor] = (y, x)
+                queue.append(neighbor)
+
+    # reconstruct path
+    path: list[tuple[int, int]] = []
+    curr = closest_pos_on_path
+    while curr is not None:
+        path.append(curr)
+        curr = parent_map.get(curr)
+    path.reverse()  # Path is now [current_pos, step1, ..., closest_pos_on_path]
+
+    # Convert path into commands
+    i = 0
+    while i < len(path) - 1:
+        p_start = path[i]
+        p_next = path[i + 1]
+
+        dy, dx = p_next[0] - p_start[0], p_next[1] - p_start[1]
+        steps = 0
+
+        # Look ahead to see how long we move in this direction
+        j = i
+        while j < len(path) - 1:
+            step_dy = path[j + 1][0] - path[j][0]
+            step_dx = path[j + 1][1] - path[j][1]
+
+            if (step_dy, step_dx) == (dy, dx):
+                steps += 1
+                j += 1
+            else:
+                break
+
+        if steps > 0:
+            commands.append(Command(x=dx, y=dy, steps=steps))
+
+        i = j
+
+    # Update current_point to where this path-following ended
+    current_point = closest_pos_on_path
+
+    # After BFS, draw new lines
+    if current_point == next_point:
+        return commands, img  # We're already there
+
+    # Calculate direction for diagonal move
     dy = next_point[0] - current_point[0]
     dx = next_point[1] - current_point[1]
 
-    dir_x = 0
-    dir_y = 0
-    if dy > 0:
-        dir_y = 1
-    elif dy < 0:
-        dir_y = -1
+    dir_y = 1 if dy > 0 else -1 if dy < 0 else 0
+    dir_x = 1 if dx > 0 else -1 if dx < 0 else 0
 
-    if dx > 0:
-        dir_x = 1
-    elif dx < 0:
-        dir_x = -1
+    # Diagonal Command
+    diag_steps = min(abs(dy), abs(dx))
+    if diag_steps > 0:
+        commands.append(Command(x=dir_x, y=dir_y, steps=diag_steps))
+        # Mark traveled pixels as '1'
+        for i in range(1, diag_steps + 1):
+            img[current_point[0] + (dir_y * i), current_point[1] + (dir_x * i)] = 1
 
-    direction = (dir_y, dir_x)
+        # Update current_pos
+        current_point = (
+            current_point[0] + (dir_y * diag_steps),
+            current_point[1] + (dir_x * diag_steps),
+        )
 
-    min_dy_dx = min(abs(dy), abs(dx))
-    # next create command to get as close as we can
-    command_diag = Command(direction[1], direction[0], min_dy_dx)
+    # Adjustment Command
+    dy_adj = next_point[0] - current_point[0]
+    dx_adj = next_point[1] - current_point[1]
 
-    commands.append(command_diag)
+    adj_steps = max(abs(dy_adj), abs(dx_adj))
+    if adj_steps > 0:
+        adj_dir_y = 1 if dy_adj > 0 else -1 if dy_adj < 0 else 0
+        adj_dir_x = 1 if dx_adj > 0 else -1 if dx_adj < 0 else 0
+        commands.append(Command(x=adj_dir_x, y=adj_dir_y, steps=adj_steps))
 
-    current_point = (
-        current_point[0] + (direction[0] * min_dy_dx),
-        current_point[1] + (direction[1] * min_dy_dx),
-    )
-
-    print(f"{current_point}, {next_point}")
-
-    # finally have an adjustment command to do the last bit
-
-    # first calculate direction
-    dy = next_point[0] - current_point[0]
-    dx = next_point[1] - current_point[1]
-
-    dir_x = 0
-    dir_y = 0
-    if dy > 0:
-        dir_y = 1
-    elif dy < 0:
-        dir_y = -1
-
-    if dx > 0:
-        dir_x = 1
-    elif dx < 0:
-        dir_x = -1
-
-    steps = max(abs(dy), abs(dx))
-
-    commands.append(Command(dir_x, dir_y, steps))
+        # Mark traveled pixels as '1'
+        for i in range(1, adj_steps + 1):
+            img[
+                current_point[0] + (adj_dir_y * i), current_point[1] + (adj_dir_x * i)
+            ] = 1
 
     return commands, img
 
@@ -176,7 +208,7 @@ def gen_line_command(
 
 
 def find_next_point(
-    img: np.ndarray, total_white: int, origin: tuple[int, int] = (0, 0)
+    img: np.ndarray, origin: tuple[int, int] = (0, 0)
 ) -> tuple[tuple[int, int], np.ndarray]:
     height, width = img.shape
     # print(img.shape)
@@ -190,7 +222,7 @@ def find_next_point(
     WHITE = 255
     FOUND = 1
 
-    while total_white > 0 or x > 5 * max(width, height):
+    while np.any(img == 255) > 0 or x > 5 * max(width, height):
         # print(total_white)
         # print(img[y,x])
 
